@@ -1,20 +1,19 @@
 package telran.chat.server.task;
 
 import telran.chat.model.Message;
-import telran.mediation.BlkQueue;
-
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class ChatServerSender implements Runnable {
-    private final BlkQueue<Message> messageBox;
+    private final LinkedBlockingQueue<Message> messageBox;
     private final Set<ObjectOutputStream> clients;
 
-    public ChatServerSender(BlkQueue<Message> messageBox) {
+    public ChatServerSender(LinkedBlockingQueue<Message> messageBox) {
         this.messageBox = messageBox;
         clients = new HashSet<>();
     }
@@ -26,7 +25,12 @@ public class ChatServerSender implements Runnable {
     @Override
     public void run() {
         while (true) {
-            Message message = messageBox.pop();
+            Message message = null;
+            try {
+                message = messageBox.take();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             synchronized (this) {
                 Iterator<ObjectOutputStream> iterator = clients.iterator();
                 while (iterator.hasNext()) {
